@@ -6,9 +6,9 @@
     "requirements": [],
     "dependencies": [],
     "codeowners": ["@inovaflex"],
-    "integration_type": "hub"
+    "integration_type": "hub",
     "config_flow": true,
-    "iot_class": "local_polling"
+    "iot_class": "local_polling",
     "loggers": ["custom_components.lights_summary"],
     "after_dependencies": ["light", "switch"]
 }
