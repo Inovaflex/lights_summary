@@ -1,14 +1,24 @@
 """Lights Summary integration."""
 
-from .config_flow import LightsSummaryConfigFlow
-from .options_flow import LightsSummaryOptionsFlow
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
-async def async_setup_entry(hass, entry):
-    """Set up the integration."""
-    # No setup needed at the root, sensors are forwarded
+from .const import DOMAIN
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up Lights Summary from a config entry."""
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    )
     return True
 
-async def async_get_options_flow(config_entry):
-    """Return options flow."""
-    return LightsSummaryOptionsFlow(config_entry)
 
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    return await hass.config_entries.async_forward_entry_unload(entry, "sensor")
+
+
+async def async_get_options_flow(config_entry):
+    from .options_flow import LightsSummaryOptionsFlow
+    return LightsSummaryOptionsFlow(config_entry)
