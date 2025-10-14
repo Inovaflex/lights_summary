@@ -1,63 +1,109 @@
-from homeassistant.helpers.entity import Entity
-from homeassistant.helpers import device_registry, area_registry
-from .const import DOMAIN, DEFAULT_LABEL
+"""Lights Summary sensor for Home Assistant."""
+
+from __future__ import annotations
 import logging
+
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    area_name = entry.data.get("area_name")
-    label_name = entry.data.get("label_name", DEFAULT_LABEL)
-    async_add_entities([LightsSummarySensor(hass, area_name, label_name)])
 
-class LightsSummarySensor(Entity):
-    def __init__(self, hass, area_name, label_name):
+async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
+    """Set up Lights Summary sensor from config entry."""
+    area_name = entry.data["area_name"]
+    label_name = entry.data["label_name"]
+
+    sensor = LightsSummarySensor(hass, area_name, label_name)
+    async_add_entities([sensor], update_before_add=True)
+
+
+class LightsSummarySensor(SensorEntity):
+    """Sensor that summarizes lights/switches with a specific label in an area."""
+
+    _attr_icon = "mdi:lightbulb-group"
+
+    def __init__(self, hass: HomeAssistant, area_name: str, label_name: str) -> None:
+        """Initialize the sensor."""
         self.hass = hass
-        self.area_name = area_name
-        self.label_name = label_name
-        self._state = None
+        self._area_name = area_name
+        self._label_name = label_name
+        self._attr_name = f"{area_name} {label_name} Summary"
+        self._attr_unique_id = (
+            f"{area_name.lower().replace(' ', '_')}_{label_name.lower()}_lights_summary"
+        )
         self._attr_extra_state_attributes = {}
+        self._attr_native_value = None
+        self._unsub = None
 
-    @property
-    def name(self):
-        return f"{self.area_name} {self.label_name} Summary"
+    async def async_added_to_hass(self):
+        """When entity is added to hass, listen for state changes."""
+        @callback
+        def _handle_event(event):
+            self.async_schedule_update_ha_state(True)
 
-    @property
-    def state(self):
-        return self._state
+        self._unsub = self.hass.bus.async_listen("state_changed", _handle_event)
 
-    @property
-    def extra_state_attributes(self):
-        return self._attr_extra_state_attributes
+    async def async_will_remove_from_hass(self):
+        """Unsubscribe from events."""
+        if self._unsub:
+            self._unsub()
+            self._unsub = None
 
     async def async_update(self):
-        device_reg = device_registry.async_get(self.hass)
-        area_reg = area_registry.async_get(self.hass)
-        area_id = next((a.id for a in area_reg.async_list_areas() if a.name == self.area_name), None)
-        if not area_id:
-            self._state = "No area"
-            self._attr_extra_state_attributes = {}
-            return
+        """Recalculate the sensor state."""
+        dev_reg = dr.async_get(self.hass)
+        ent_reg = er.async_get(self.hass)
 
-        matching_devices = [
-            dev for dev in device_reg.devices.values()
-            if dev.area_id == area_id and self.label_name in getattr(dev, "labels", [])
+        area_devices = [
+            dev
+            for dev in dev_reg.devices.values()
+            if dev.area_id
+            and (area := self.hass.helpers.area_registry.async_get_area(dev.area_id))
+            and area.name == self._area_name
         ]
 
-        total = len(matching_devices)
-        on_count = 0
-        for dev in matching_devices:
-            # check any entity of the device that is on
-            for ent_id in dev.entities:
-                ent_state = self.hass.states.get(ent_id)
-                if ent_state and ent_state.state == "on":
-                    on_count += 1
-                    break
+        # Find devices matching label
+        labeled_devices = [
+            dev
+            for dev in area_devices
+            if any(
+                lbl.name.lower() == self._label_name.lower()
+                if hasattr(lbl, "name")
+                else str(lbl).lower() == self._label_name.lower()
+                for lbl in getattr(dev, "labels", [])
+            )
+        ]
 
-        self._state = f"{on_count} of {total} on" if total else "No devices"
+        # Gather all entities for those devices
+        entities = []
+        for dev in labeled_devices:
+            dev_entities = [
+                ent for ent in ent_reg.entities.values() if ent.device_id == dev.id
+            ]
+            for ent in dev_entities:
+                if ent.domain in ("light", "switch"):
+                    entities.append(ent)
+
+        # Calculate on/off state
+        on_entities = [
+            ent for ent in entities if self.hass.states.is_state(ent.entity_id, "on")
+        ]
+
         self._attr_extra_state_attributes = {
-            "entities_total": total,
-            "entities_on": on_count,
-            "entity_list": [e for dev in matching_devices for e in dev.entities]
+            "Label": self._label_name,
+            "Status": "on" if on_entities else "off",
+            "Entities on": len(on_entities),
+            "Entities total": len(entities),
+            "Entity list": [ent.entity_id for ent in entities],
         }
-        _LOGGER.debug("Updated %s: %s", self.name, self._state)
+
+        if not entities:
+            self._attr_native_value = "No devices in area"
+        elif on_entities:
+            self._attr_native_value = f"{len(on_entities)} of {len(entities)} on"
+        else:
+            self._attr_native_value = "All off"
