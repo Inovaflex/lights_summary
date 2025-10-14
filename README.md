@@ -4,6 +4,7 @@ Custom integration for Home Assistant
 # Installation
 
 Copy the 'lights_summary' folder to your custom_components directory in Home Assistant
+Restart Home Assistant
 
 Credits
 Author: Tomas Haglund
