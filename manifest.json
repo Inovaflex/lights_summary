@@ -2,8 +2,12 @@
     "domain": "lights_summary",
     "name": "Lights Summary",
     "version": "1.3.0",
-    "documentation": "https://example.com/docs",
-    "codeowners": ["@yourgithubusername"],
+    "documentation": "https://github.com/Inovaflex/lights_summary",
+    "requirements": [],
+    "dependencies": [],
+    "codeowners": ["@inovaflex"],
+    "integration_type": "hub"
     "config_flow": true,
     "iot_class": "local_polling"
+    "loggers": ["custom_components.lights_summary"]
 }
