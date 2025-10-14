@@ -1,0 +1,9 @@
+{
+    "domain": "lights_summary",
+    "name": "Lights Summary",
+    "version": "1.3.0",
+    "documentation": "https://example.com/docs",
+    "codeowners": ["@yourgithubusername"],
+    "config_flow": true,
+    "iot_class": "local_polling"
+}
