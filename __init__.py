@@ -15,8 +15,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
-    return await hass.config_entries.async_forward_entry_unload(entry, "sensor")
-
+    return await hass.config_entries.async_unload_platforms(entry, ["sensor"])
 
 async def async_get_options_flow(config_entry):
     from .options_flow import LightsSummaryOptionsFlow
