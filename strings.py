@@ -1,26 +1,18 @@
 {
-  "title": "Lights Summary",
   "config": {
     "step": {
       "user": {
-        "title": "Select Area",
-        "description": "Choose the area where you want to create a Lights Summary sensor.",
+        "title": "Lights Summary",
+        "description": "Select which area and label to monitor.",
         "data": {
-          "area_name": "Area"
-        }
-      },
-      "label_select": {
-        "title": "Select Label",
-        "description": "Select a device label from devices in the chosen area.",
-        "data": {
-          "label_name": "Device label"
+          "area_name": "Area",
+          "label_name": "Label"
         }
       }
     },
     "abort": {
-      "no_areas": "No areas are defined. Please add an area first.",
-      "already_configured": "A Lights Summary sensor for this area and label already exists.",
-      "invalid_area": "The selected area is invalid or has been deleted."
+      "no_areas": "No areas found in your Home Assistant setup."
     }
   }
 }
+
